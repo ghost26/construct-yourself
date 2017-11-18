@@ -22,10 +22,12 @@ appP = try $ between (char '(') (char ')') $
            <*> termP
 
 bracketP :: Parser Term
-bracketP = undefined
+bracketP = try $ between (char '(') (char ')') $
+           termP
 
 lamP :: Parser Term
-lamP = undefined
+lamP = (\x y -> Lam (pack x) y) <$> (char '\\' *> many space *> nameP <* many space <* char '.' <* many space)
+                               <*> termP
 
 nameP :: Parser String
 nameP = (:) <$> char 'x' <*> many digit
