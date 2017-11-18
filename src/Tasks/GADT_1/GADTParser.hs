@@ -17,7 +17,8 @@ iLitP :: Parser (Lit Int)
 iLitP = (ILit . read) <$> (\x -> bracketP x <|> x) (spacedP (many1 digit))
 
 bLitP :: Parser (Lit Bool)
-bLitP = (\x -> BLit (if x == 'T' then True else False)) <$> (\x -> bracketP x <|> x) (spacedP (satisfy (\x -> x == 'T' || x == 'F')))
+bLitP = (\x -> BLit (if x == 'T' then True else False))
+        <$> (\x -> bracketP x <|> x) (spacedP (satisfy (\x -> x == 'T' || x == 'F')))
 
 iiLitP :: Parser (Expr Int)
 iiLitP = Lit <$> iLitP
@@ -30,14 +31,15 @@ addP = (Add <$> (spacedP (bracketP parse) <* char '+') <*> spacedP parse) <|>
        (Add <$> (iiLitP <* char '+') <*> spacedP parse)
 
 leqP :: Parser (Expr Bool)
-leqP = Leq <$> (parse <* char '<') <*> parse
+leqP = Leq <$> (spacedP parse <* char '<') <*> parse
 
 andP :: Parser (Expr Bool)
 andP = (And <$> (spacedP (bracketP parse) <* string "&&") <*> spacedP parse) <|>
-       (And <$> (bbLitP <* string "&&") <*> spacedP parse)
+       (And <$> (bbLitP <* string "&&") <*> spacedP parse) <|>
+       (And <$> spacedP leqP <* (string "&&") <*> parse)
 
 spacedP :: Parser a -> Parser a
-spacedP p = (many space *> p) <* many space
+spacedP = try . (between (many space) (many space))
 
 bracketP :: Parser a -> Parser a
 bracketP = try . between (char '(') (char ')')
@@ -46,6 +48,12 @@ class MyParse a where
   parse :: Parser (Expr a)
 
 instance MyParse Int where
-  parse = try (spacedP addP) <|> bracketP parse <|> iiLitP
+  parse = try (spacedP addP)
+      <|> (bracketP parse)
+      <|> iiLitP
+
 instance MyParse Bool where
-  parse = try (spacedP leqP) <|> try (spacedP andP) <|> bracketP parse <|> bbLitP
+  parse = try (spacedP andP)
+      <|> try (spacedP leqP)
+      <|> bracketP parse
+      <|> bbLitP
